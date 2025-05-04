@@ -5,6 +5,7 @@ android {
 
     defaultConfig {
         applicationId "com.example.customide"
+        namespace "com.example.customide"
         minSdkVersion 21
         targetSdkVersion 33
         versionCode 1
