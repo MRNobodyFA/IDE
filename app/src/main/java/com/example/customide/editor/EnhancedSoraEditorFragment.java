@@ -62,7 +62,7 @@ public class EnhancedSoraEditorFragment extends Fragment {
         // فعال‌سازی Auto-indent، Bracket Matching و تنظیم تم
         soraEditor.setAutoIndentEnabled(true);
         soraEditor.setMatchingBracketEnabled(true);
-        soraEditor.setTheme(io.github.rosemoe.sora.widget.Theme.MONOKAI);
+        soraEditor.setTheme(io.github.rosemoe.sora.widget.schemes.SchemeGitHub);
 
         // بارگذاری محتوا از فایل در صورت وجود مسیر
         String filePath = getArguments() != null ? getArguments().getString(ARG_FILE_PATH) : null;
