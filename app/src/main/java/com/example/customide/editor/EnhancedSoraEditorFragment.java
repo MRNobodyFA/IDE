@@ -12,7 +12,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import com.example.customide.R;
 import com.jakewharton.rxbinding4.widget.RxTextView;
-import io.github.rosemoe.sora.lang.java.JavaLanguage;
+import io.github.rosemoe.sora.langs.java.JavaLanguage;
 import io.github.rosemoe.sora.widget.CodeEditor;
 import java.io.BufferedReader;
 import java.io.File;
