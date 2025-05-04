@@ -13,7 +13,7 @@ import com.example.customide.R;
 // مسیر جدید JavaLanguage در نسخه 0.23.0
 import io.github.rosemoe.sora.langs.java.JavaLanguage;
 import io.github.rosemoe.sora.widget.CodeEditor;
-// استفاده از کلاس سفارشی MonokaiScheme (که در ادامه تعریف شده است)
+// از کلاس سفارشی MonokaiScheme برای تم استفاده می‌کنیم
 import io.github.rosemoe.sora.widget.schemes.SchemeGitHub;
 import java.io.BufferedReader;
 import java.io.File;
@@ -25,7 +25,8 @@ public class EnhancedSoraEditorFragment extends Fragment {
     private CodeEditor soraEditor;
     private static final String ARG_FILE_PATH = "file_path";
     private Handler handler = new Handler();
-    private Runnable debounceRunnable;
+    private Runnable pollRunnable;
+    private String lastText = "";
 
     public static EnhancedSoraEditorFragment newInstance(String filePath) {
         EnhancedSoraEditorFragment fragment = new EnhancedSoraEditorFragment();
@@ -37,49 +38,52 @@ public class EnhancedSoraEditorFragment extends Fragment {
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
+    public View onCreateView(@NonNull LayoutInflater inflater, 
+                             @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_sora_editor, container, false);
         soraEditor = view.findViewById(R.id.soraEditor);
 
-        // تنظیم زبان به جاوا (مسیر اصلاح‌شده)
+        // تنظیم زبان به جاوا (مسیر به‌روز شده برای نسخه 0.23.0)
         soraEditor.setEditorLanguage(new JavaLanguage());
 
-        // تنظیم تم: استفاده از MonokaiScheme (کلاس سفارشی)
+        // تنظیم تم از طریق کلاس سفارشی MonokaiScheme
         soraEditor.setColorScheme(new SchemeGitHub());
 
-        // بارگذاری محتوا از فایل (در صورت ارائه مسیر)
+        // بارگذاری محتوا از فایل در صورت ارائه مسیر
         String filePath = (getArguments() != null) ? getArguments().getString(ARG_FILE_PATH) : null;
         if (filePath != null && !filePath.isEmpty()) {
             String content = readFile(filePath);
             soraEditor.setText(content);
         }
 
-        // دریافت تغییرات متن: استفاده از setOnTextChangedListener (طبق API 0.23.0)
-        soraEditor.setOnTextChangedListener(new CodeEditor.TextChangedListener() {
-            @Override
-            public void onTextChanged(CharSequence text, int start, int before, int count) {
-                if (debounceRunnable != null) {
-                    handler.removeCallbacks(debounceRunnable);
-                }
-                debounceRunnable = new Runnable() {
-                    @Override
-                    public void run() {
-                        advancedCheckErrors();
-                    }
-                };
-                handler.postDelayed(debounceRunnable, 500);
-            }
-        });
+        // استفاده از polling با Handler برای نظارت بر تغییرات متن هر 500 میلی‌ثانیه
+        startPolling();
 
         return view;
     }
 
-    // متد بررسی زنده خطا: اگر یک خط غیرخالی و غیرکامنت به ";"، "{" یا "}" ختم نشود، خطا در لاگ گزارش می‌شود.
-    private void advancedCheckErrors() {
+    private void startPolling(){
+        pollRunnable = new Runnable(){
+            @Override
+            public void run() {
+                String currentText = soraEditor.getText().toString();
+                if (!currentText.equals(lastText)){
+                    lastText = currentText;
+                    advancedCheckErrors();
+                }
+                handler.postDelayed(this, 500);
+            }
+        };
+        handler.postDelayed(pollRunnable, 500);
+    }
+
+    // بررسی ساده زنده خطا: اگر یک خط (غیرخالی و غیرکامنت) به ";"، "{" یا "}" ختم نشود،
+    // در لاگ ثبت می‌شود.
+    private void advancedCheckErrors(){
         String text = soraEditor.getText().toString();
         String[] lines = text.split("\n");
-        for (String line : lines) {
+        for(String line: lines){
             String trimmed = line.trim();
             if (!trimmed.isEmpty() && !trimmed.startsWith("//")
                 && !(trimmed.endsWith(";") || trimmed.endsWith("{") || trimmed.endsWith("}"))) {
@@ -88,7 +92,7 @@ public class EnhancedSoraEditorFragment extends Fragment {
         }
     }
 
-    private String readFile(String filePath) {
+    private String readFile(String filePath){
         File file = new File(filePath);
         if (!file.exists() || !file.isFile()) return "";
         StringBuilder builder = new StringBuilder();
@@ -104,9 +108,9 @@ public class EnhancedSoraEditorFragment extends Fragment {
     }
 
     @Override
-    public void onDestroyView() {
-        if (debounceRunnable != null) {
-            handler.removeCallbacks(debounceRunnable);
+    public void onDestroyView(){
+        if (pollRunnable != null){
+            handler.removeCallbacks(pollRunnable);
         }
         super.onDestroyView();
     }
