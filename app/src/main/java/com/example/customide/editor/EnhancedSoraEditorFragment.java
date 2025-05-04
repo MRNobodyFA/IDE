@@ -1,9 +1,10 @@
 package com.example.customide.editor;
 
 import android.os.Bundle;
+import android.os.Handler;
 import android.text.Editable;
-import android.text.TextPaint;
-import android.text.style.UnderlineSpan;
+import android.text.TextWatcher;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,31 +12,23 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import com.example.customide.R;
-import com.jakewharton.rxbinding4.widget.RxTextView;
+// اصلاح مسیر JavaLanguage در نسخه 0.23.0
 import io.github.rosemoe.sora.langs.java.JavaLanguage;
 import io.github.rosemoe.sora.widget.CodeEditor;
+// استفاده از MonokaiScheme از پکیج جدید
+import io.github.rosemoe.sora.widget.schemes.MonokaiScheme;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
-import io.reactivex.rxjava3.disposables.Disposable;
 
 public class EnhancedSoraEditorFragment extends Fragment {
 
     private CodeEditor soraEditor;
     private static final String ARG_FILE_PATH = "file_path";
-    private Disposable textChangeDisposable;
-
-    // ErrorSpan سفارشی جهت underline خطاها (قرمز)
-    public static class ErrorSpan extends UnderlineSpan {
-        @Override
-        public void updateDrawState(TextPaint ds) {
-            ds.setUnderlineText(true);
-            ds.setColor(0xFFFF0000);
-        }
-    }
+    private Handler handler = new Handler();
+    private Runnable debounceRunnable;
 
     public static EnhancedSoraEditorFragment newInstance(String filePath) {
         EnhancedSoraEditorFragment fragment = new EnhancedSoraEditorFragment();
@@ -52,17 +45,16 @@ public class EnhancedSoraEditorFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_sora_editor, container, false);
         soraEditor = view.findViewById(R.id.soraEditor);
 
-        // تنظیم زبان به جاوا
+        // تنظیم زبان به جاوا (مسیر پکیج جدید)
         soraEditor.setEditorLanguage(new JavaLanguage());
-        
-        // فعال‌سازی auto-completion؛ توجه کنید که در نسخه 0.23.0 ممکن است متد به شکل setAutoCompletionEnabled موجود باشد.
-        // در اینجا فرض می‌کنیم که این متد وجود دارد:
-        soraEditor.setAutoCompletionEnabled(true);
 
-        // فعال‌سازی Auto-indent، Bracket Matching و تنظیم تم
-        soraEditor.setAutoIndentEnabled(true);
-        soraEditor.setMatchingBracketEnabled(true);
-        soraEditor.setTheme(io.github.rosemoe.sora.widget.schemes.SchemeGitHub);
+        // حذف فراخوانی متد setAutoCompletionEnabled (که در این نسخه وجود ندارد)
+        // تنظیم auto-indent و bracket matching از طریق پروپس
+        soraEditor.getProps().setAutoIndent(true);
+        soraEditor.getProps().setBracketMatching(true);
+
+        // تنظیم تم: استفاده از MonokaiScheme موجود در پکیج schemes
+        soraEditor.setColorScheme(new MonokaiScheme());
 
         // بارگذاری محتوا از فایل در صورت وجود مسیر
         String filePath = getArguments() != null ? getArguments().getString(ARG_FILE_PATH) : null;
@@ -71,35 +63,48 @@ public class EnhancedSoraEditorFragment extends Fragment {
             soraEditor.setText(content);
         }
 
-        // استفاده از RxBinding برای مشاهده تغییرات متن با debounce 500ms
-        textChangeDisposable = RxTextView.textChanges(soraEditor)
-                .skipInitialValue()
-                .debounce(500, TimeUnit.MILLISECONDS)
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(charSequence -> advancedCheckErrors());
+        // استفاده از TextWatcher برای دریافت تغییرات متن به همراه debouncing (500ms)
+        soraEditor.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                // بدون عمل
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                // بدون عمل
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                // اجرای debounce: حذف callback قبلی و ارسال Runnable جدید
+                if (debounceRunnable != null) {
+                    handler.removeCallbacks(debounceRunnable);
+                }
+                debounceRunnable = new Runnable() {
+                    @Override
+                    public void run() {
+                        advancedCheckErrors();
+                    }
+                };
+                handler.postDelayed(debounceRunnable, 500);
+            }
+        });
 
         return view;
     }
 
-    // بررسی زنده خطا: اگر خط غیرخالی (و غیرکامنت) به درستی با علامت پایان‌دهنده (";", "{" یا "}") ختم نشود، آن خط شامل ErrorSpan می‌شود.
+    // روش ساده بررسی زنده خطا: در این مثال، اگر یک خط غیرخالی (و غیرکامنت)
+    // به درستی (با ";"، "{" یا "}") خاتمه نیابد، خطا در لاگ گزارش می‌شود.
     private void advancedCheckErrors() {
-        Editable text = soraEditor.getText();
-        // حذف ErrorSpanهای قبلی
-        ErrorSpan[] errorSpans = text.getSpans(0, text.length(), ErrorSpan.class);
-        for (ErrorSpan span : errorSpans) {
-            text.removeSpan(span);
-        }
-        String[] lines = text.toString().split("\n");
-        int index = 0;
+        String text = soraEditor.getText().toString();
+        String[] lines = text.split("\n");
         for (String line : lines) {
             String trimmed = line.trim();
-            if (!trimmed.isEmpty() && !trimmed.startsWith("//") &&
-                    !(trimmed.endsWith(";") || trimmed.endsWith("{") || trimmed.endsWith("}"))) {
-                int start = index;
-                int end = index + line.length();
-                text.setSpan(new ErrorSpan(), start, end, Editable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            if (!trimmed.isEmpty() && !trimmed.startsWith("//")
+                && !(trimmed.endsWith(";") || trimmed.endsWith("{") || trimmed.endsWith("}"))) {
+                Log.e("SoraEditorError", "خطا در پایان خط: " + line);
             }
-            index += line.length() + 1;
         }
     }
 
@@ -117,12 +122,12 @@ public class EnhancedSoraEditorFragment extends Fragment {
         }
         return builder.toString();
     }
-    
+
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        if (textChangeDisposable != null && !textChangeDisposable.isDisposed()) {
-            textChangeDisposable.dispose();
+        if (debounceRunnable != null) {
+            handler.removeCallbacks(debounceRunnable);
         }
     }
 }
