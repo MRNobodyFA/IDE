@@ -16,7 +16,7 @@ import com.example.customide.R;
 import io.github.rosemoe.sora.langs.java.JavaLanguage;
 import io.github.rosemoe.sora.widget.CodeEditor;
 // استفاده از MonokaiScheme از پکیج جدید
-import io.github.rosemoe.sora.widget.schemes.MonokaiScheme;
+import io.github.rosemoe.sora.widget.schemes.SchemeGitHub;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -54,7 +54,7 @@ public class EnhancedSoraEditorFragment extends Fragment {
         soraEditor.getProps().setBracketMatching(true);
 
         // تنظیم تم: استفاده از MonokaiScheme موجود در پکیج schemes
-        soraEditor.setColorScheme(new MonokaiScheme());
+        soraEditor.setColorScheme(new SchemeGitHub());
 
         // بارگذاری محتوا از فایل در صورت وجود مسیر
         String filePath = getArguments() != null ? getArguments().getString(ARG_FILE_PATH) : null;
