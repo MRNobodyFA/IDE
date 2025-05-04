@@ -2,8 +2,6 @@ package com.example.customide.editor;
 
 import android.os.Bundle;
 import android.os.Handler;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,16 +10,15 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import com.example.customide.R;
-// اصلاح مسیر JavaLanguage در نسخه 0.23.0
+// مسیر جدید JavaLanguage در نسخه 0.23.0
 import io.github.rosemoe.sora.langs.java.JavaLanguage;
 import io.github.rosemoe.sora.widget.CodeEditor;
-// استفاده از MonokaiScheme از پکیج جدید
+// استفاده از کلاس سفارشی MonokaiScheme (که در ادامه تعریف شده است)
 import io.github.rosemoe.sora.widget.schemes.SchemeGitHub;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
 
 public class EnhancedSoraEditorFragment extends Fragment {
 
@@ -45,39 +42,23 @@ public class EnhancedSoraEditorFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_sora_editor, container, false);
         soraEditor = view.findViewById(R.id.soraEditor);
 
-        // تنظیم زبان به جاوا (مسیر پکیج جدید)
+        // تنظیم زبان به جاوا (مسیر اصلاح‌شده)
         soraEditor.setEditorLanguage(new JavaLanguage());
 
-        // حذف فراخوانی متد setAutoCompletionEnabled (که در این نسخه وجود ندارد)
-        // تنظیم auto-indent و bracket matching از طریق پروپس
-        soraEditor.getProps().setAutoIndent(true);
-        soraEditor.getProps().setBracketMatching(true);
-
-        // تنظیم تم: استفاده از MonokaiScheme موجود در پکیج schemes
+        // تنظیم تم: استفاده از MonokaiScheme (کلاس سفارشی)
         soraEditor.setColorScheme(new SchemeGitHub());
 
-        // بارگذاری محتوا از فایل در صورت وجود مسیر
-        String filePath = getArguments() != null ? getArguments().getString(ARG_FILE_PATH) : null;
-        if (filePath != null) {
+        // بارگذاری محتوا از فایل (در صورت ارائه مسیر)
+        String filePath = (getArguments() != null) ? getArguments().getString(ARG_FILE_PATH) : null;
+        if (filePath != null && !filePath.isEmpty()) {
             String content = readFile(filePath);
             soraEditor.setText(content);
         }
 
-        // استفاده از TextWatcher برای دریافت تغییرات متن به همراه debouncing (500ms)
-        soraEditor.addTextChangedListener(new TextWatcher() {
+        // دریافت تغییرات متن: استفاده از setOnTextChangedListener (طبق API 0.23.0)
+        soraEditor.setOnTextChangedListener(new CodeEditor.TextChangedListener() {
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-                // بدون عمل
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                // بدون عمل
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-                // اجرای debounce: حذف callback قبلی و ارسال Runnable جدید
+            public void onTextChanged(CharSequence text, int start, int before, int count) {
                 if (debounceRunnable != null) {
                     handler.removeCallbacks(debounceRunnable);
                 }
@@ -94,8 +75,7 @@ public class EnhancedSoraEditorFragment extends Fragment {
         return view;
     }
 
-    // روش ساده بررسی زنده خطا: در این مثال، اگر یک خط غیرخالی (و غیرکامنت)
-    // به درستی (با ";"، "{" یا "}") خاتمه نیابد، خطا در لاگ گزارش می‌شود.
+    // متد بررسی زنده خطا: اگر یک خط غیرخالی و غیرکامنت به ";"، "{" یا "}" ختم نشود، خطا در لاگ گزارش می‌شود.
     private void advancedCheckErrors() {
         String text = soraEditor.getText().toString();
         String[] lines = text.split("\n");
@@ -125,9 +105,9 @@ public class EnhancedSoraEditorFragment extends Fragment {
 
     @Override
     public void onDestroyView() {
-        super.onDestroyView();
         if (debounceRunnable != null) {
             handler.removeCallbacks(debounceRunnable);
         }
+        super.onDestroyView();
     }
 }
