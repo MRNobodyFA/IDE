@@ -61,7 +61,7 @@ dependencies {
     
     // Sora Editor
     implementation 'io.github.Rosemoe.sora-editor:editor:0.23.5'
-	implementation 'io.github.Rosemoe.sora-editor:language-java:0.23.5'
+	implementation 'io.github.Rosemoe.sora-editor:language-java:0.21.0'
     // RxJava3 and RxAndroid
     implementation 'io.reactivex.rxjava3:rxjava:3.1.5'
     implementation 'io.reactivex.rxjava3:rxandroid:3.0.2'
