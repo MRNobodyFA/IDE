@@ -80,7 +80,7 @@ jobs:
           ./gradlew :app:assemble${build_type^}
       - name: Copy ${{ matrix.build_type }} APK
         run: |
-          cp IDE/app/build/outputs/apk/${{ matrix.build_type }}/app-*.apk ./
+          cp core/app/build/outputs/apk/${{ matrix.build_type }}/app-*.apk ./
       - name: Upload arm64-v8a ${{ matrix.build_type }} APK
         uses: actions/upload-artifact@v4
         with:
