@@ -15,16 +15,6 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
-    
-    buildTypes {
-        release {
-            minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-        }
-        debug {
-            minifyEnabled false
-        }
-    }
 
     flavorDimensions "tier"
     productFlavors {
@@ -60,8 +50,8 @@ dependencies {
     implementation 'androidx.core:core-ktx:1.9.0'
     
     // Sora Editor
-    implementation 'io.github.Rosemoe.sora-editor:editor:0.19.0'
-	implementation 'io.github.Rosemoe.sora-editor:language-java:0.19.0'
+    implementation 'io.github.Rosemoe.sora-editor:editor:0.21.0'
+	implementation 'io.github.Rosemoe.sora-editor:language-java:0.21.0'
     // RxJava3 and RxAndroid
     implementation 'io.reactivex.rxjava3:rxjava:3.1.5'
     implementation 'io.reactivex.rxjava3:rxandroid:3.0.2'
