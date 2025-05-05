@@ -34,7 +34,6 @@
                 <data android:scheme="customide" android:host="open" />
             </intent-filter>
         </activity>
-		
 		<activity
 			android:name=".DebugActivity"
 			android:screenOrientation="portrait" />
