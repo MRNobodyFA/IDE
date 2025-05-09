@@ -6,15 +6,19 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+
 import com.example.customide.R;
-// مسیر جدید JavaLanguage در نسخه 0.23.0
+
+// استفاده از مسیر به‌روز شده JavaLanguage در نسخه 0.23.0
 import io.github.rosemoe.sora.langs.java.JavaLanguage;
 import io.github.rosemoe.sora.widget.CodeEditor;
-// از کلاس سفارشی MonokaiScheme برای تم استفاده می‌کنیم
+// تنظیم تم با استفاده از SchemeGitHub؛ در صورتی که در نسخه شما موجود است.
 import io.github.rosemoe.sora.widget.schemes.SchemeGitHub;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -44,11 +48,24 @@ public class EnhancedSoraEditorFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_sora_editor, container, false);
         soraEditor = view.findViewById(R.id.soraEditor);
 
-        // تنظیم زبان به جاوا (مسیر به‌روز شده برای نسخه 0.23.0)
-        soraEditor.setEditorLanguage(new JavaLanguage());
+        // بررسی وجود view مربوط به CodeEditor
+        if (soraEditor == null) {
+            throw new NullPointerException("soraEditor is null! لطفاً فایل fragment_sora_editor.xml را بررسی کنید.");
+        }
 
-        // تنظیم تم از طریق کلاس سفارشی MonokaiScheme
-        soraEditor.setColorScheme(new SchemeGitHub());
+        // تنظیم زبان به جاوا با استفاده از مسیر نوین
+        try {
+            soraEditor.setEditorLanguage(new JavaLanguage());
+        } catch (Exception e) {
+            Log.e("EnhancedSoraEditor", "Error setting editor language: " + e.getMessage());
+        }
+
+        // تنظیم تم از طریق SchemeGitHub
+        try {
+            soraEditor.setColorScheme(new SchemeGitHub());
+        } catch (Exception e) {
+            Log.e("EnhancedSoraEditor", "Error setting color scheme: " + e.getMessage());
+        }
 
         // بارگذاری محتوا از فایل در صورت ارائه مسیر
         String filePath = (getArguments() != null) ? getArguments().getString(ARG_FILE_PATH) : null;
@@ -57,20 +74,24 @@ public class EnhancedSoraEditorFragment extends Fragment {
             soraEditor.setText(content);
         }
 
-        // استفاده از polling با Handler برای نظارت بر تغییرات متن هر 500 میلی‌ثانیه
+        // شروع نظارت (polling) بر تغییرات متن هر 500 میلی‌ثانیه
         startPolling();
 
         return view;
     }
 
-    private void startPolling(){
-        pollRunnable = new Runnable(){
+    private void startPolling() {
+        pollRunnable = new Runnable() {
             @Override
             public void run() {
-                String currentText = soraEditor.getText().toString();
-                if (!currentText.equals(lastText)){
-                    lastText = currentText;
-                    advancedCheckErrors();
+                try {
+                    String currentText = soraEditor.getText().toString();
+                    if (!currentText.equals(lastText)) {
+                        lastText = currentText;
+                        advancedCheckErrors();
+                    }
+                } catch (Exception e) {
+                    Log.e("EnhancedSoraEditor", "Polling error: " + e.getMessage());
                 }
                 handler.postDelayed(this, 500);
             }
@@ -78,21 +99,20 @@ public class EnhancedSoraEditorFragment extends Fragment {
         handler.postDelayed(pollRunnable, 500);
     }
 
-    // بررسی ساده زنده خطا: اگر یک خط (غیرخالی و غیرکامنت) به ";"، "{" یا "}" ختم نشود،
-    // در لاگ ثبت می‌شود.
-    private void advancedCheckErrors(){
+    // بررسی ساده خطا: اگر خطی غیرخالی (و غیرکامنت) به ";"، "{" یا "}" ختم نشود، در Log گزارش می‌شود.
+    private void advancedCheckErrors() {
         String text = soraEditor.getText().toString();
         String[] lines = text.split("\n");
-        for(String line: lines){
+        for (String line : lines) {
             String trimmed = line.trim();
             if (!trimmed.isEmpty() && !trimmed.startsWith("//")
-                && !(trimmed.endsWith(";") || trimmed.endsWith("{") || trimmed.endsWith("}"))) {
+                    && !(trimmed.endsWith(";") || trimmed.endsWith("{") || trimmed.endsWith("}"))) {
                 Log.e("SoraEditorError", "خطا در پایان خط: " + line);
             }
         }
     }
 
-    private String readFile(String filePath){
+    private String readFile(String filePath) {
         File file = new File(filePath);
         if (!file.exists() || !file.isFile()) return "";
         StringBuilder builder = new StringBuilder();
@@ -102,14 +122,14 @@ public class EnhancedSoraEditorFragment extends Fragment {
                 builder.append(ln).append("\n");
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            Log.e("EnhancedSoraEditor", "Error reading file: " + e.getMessage());
         }
         return builder.toString();
     }
 
     @Override
-    public void onDestroyView(){
-        if (pollRunnable != null){
+    public void onDestroyView() {
+        if (pollRunnable != null) {
             handler.removeCallbacks(pollRunnable);
         }
         super.onDestroyView();
